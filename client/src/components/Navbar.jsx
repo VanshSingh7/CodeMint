@@ -1,9 +1,14 @@
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { Sun, Moon, Code2 } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import AuthModal from "./AuthModal";
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated, user, logout } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const linkClass = ({ isActive }) =>
     `px-3 py-1.5 rounded-md text-sm font-medium ${
@@ -32,10 +37,41 @@ export default function Navbar() {
         >
           {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
         </button>
-        <button className="px-3.5 py-1 rounded-md bg-accent-emphasis text-white text-sm font-medium">
-          Sign in
-        </button>
+
+        {isAuthenticated ? (
+          <div className="flex items-center gap-2">
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.username}
+                className="w-7 h-7 rounded-full border border-border"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-accent-emphasis text-white text-xs font-medium flex items-center justify-center">
+                {user?.username?.[0]?.toUpperCase()}
+              </div>
+            )}
+            <span className="text-sm text-fg-muted hidden sm:inline">
+              {user?.username}
+            </span>
+            <button
+              onClick={logout}
+              className="px-3 py-1 rounded-md text-sm font-medium text-fg-muted hover:bg-canvas-subtle hover:text-fg"
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="px-3.5 py-1 rounded-md bg-accent-emphasis text-white text-sm font-medium"
+          >
+            Sign in
+          </button>
+        )}
       </div>
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </nav>
   );
 }
