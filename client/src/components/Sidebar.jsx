@@ -9,10 +9,9 @@ const items = [
 
 export default function Sidebar() {
   const itemClass = ({ isActive }) =>
-    `block px-2 py-1.5 rounded-md text-sm mb-0.5 ${
-      isActive
-        ? "bg-accent-subtle text-accent-fg font-medium"
-        : "text-fg-muted hover:bg-canvas-subtle hover:text-fg"
+    `block px-2 py-1.5 rounded-md text-sm mb-0.5 ${isActive
+      ? "bg-accent-subtle text-accent-fg font-medium"
+      : "text-fg-muted hover:bg-canvas-subtle hover:text-fg"
     }`;
 
   return (

@@ -5,6 +5,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/auth");
 const snippetRoutes = require("./routes/snippets");
 const submissionRoutes = require("./routes/submissions");
+const executeRoutes = require("./routes/execute");
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/snippets", snippetRoutes);
 app.use("/api/submissions", submissionRoutes);
+app.use("/api/execute", executeRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

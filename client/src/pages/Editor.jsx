@@ -1,7 +1,8 @@
 import { useState } from "react";
 import MonacoEditor from "@monaco-editor/react";
-import { Play, Send } from "lucide-react";
+import { Play, Send, Loader2 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import { LANGUAGES, getLanguage } from "../data/languages";
 
 const TABS = [
@@ -10,14 +11,19 @@ const TABS = [
   { id: "suggestions", label: "Suggestions" },
 ];
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export default function Editor() {
   const { theme } = useTheme();
+  const { token } = useAuth();
   const [languageId, setLanguageId] = useState("java");
   const [code, setCode] = useState(getLanguage("java").starter);
   const [activeTab, setActiveTab] = useState("output");
   const [output, setOutput] = useState(
-    "// Run your code to see output here.\n// (Execution isn't wired up yet — Piston integration comes next.)"
+    "// Run your code to see output here."
   );
+  const [isRunning, setIsRunning] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLanguageChange = (e) => {
     const next = e.target.value;
@@ -25,18 +31,104 @@ export default function Editor() {
     setCode(getLanguage(next).starter);
   };
 
-  const handleRun = () => {
-    setActiveTab("output");
-    setOutput(
-      `// Running ${getLanguage(languageId).label} code...\n// This is a placeholder — Piston execution isn't connected yet.`
-    );
+  const runOnPiston = async () => {
+    const { piston } = getLanguage(languageId);
+
+    const res = await fetch(`${API_BASE}/execute`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        language: piston.language,
+        version: piston.version,
+        code,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Execution failed");
+    return data;
   };
 
-  const handleSubmit = () => {
-    setActiveTab("suggestions");
-    setOutput(
-      "// Submit will eventually run execution + test cases + clean-code\n// analysis (ESLint/Pylint + LLM). Not wired up yet."
-    );
+  const handleRun = async () => {
+    if (!token) {
+      setActiveTab("output");
+      setOutput("// Please sign in to run code.");
+      return;
+    }
+
+    setActiveTab("output");
+    setIsRunning(true);
+    setOutput(`// Running ${getLanguage(languageId).label} code...`);
+
+    try {
+      const result = await runOnPiston();
+
+      if (result.stage === "compile") {
+        setOutput(`// Compile error:\n${result.stderr}`);
+      } else {
+        const parts = [];
+        if (result.stdout) parts.push(result.stdout);
+        if (result.stderr) parts.push(`// stderr:\n${result.stderr}`);
+        if (!result.stdout && !result.stderr) parts.push("// (no output)");
+        parts.push(`\n// exit code: ${result.exitCode}`);
+        setOutput(parts.join("\n"));
+      }
+    } catch (err) {
+      setOutput(`// Error: ${err.message}`);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!token) {
+      setActiveTab("output");
+      setOutput("// Please sign in to submit code.");
+      return;
+    }
+
+    setActiveTab("output");
+    setIsSubmitting(true);
+    setOutput(`// Running ${getLanguage(languageId).label} code...`);
+
+    try {
+      const result = await runOnPiston();
+
+      const parts = [];
+      if (result.stdout) parts.push(result.stdout);
+      if (result.stderr) parts.push(`// stderr:\n${result.stderr}`);
+      parts.push(`\n// exit code: ${result.exitCode}`);
+      setOutput(parts.join("\n"));
+
+      // Persist as a submission (test cases + suggestions come later —
+      // for now this just records the run with kind: "submit")
+      await fetch(`${API_BASE}/submissions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          language: languageId,
+          code,
+          kind: "submit",
+          execution: {
+            stdout: result.stdout || "",
+            stderr: result.stderr || "",
+            exitCode: result.exitCode,
+          },
+        }),
+      });
+
+      setActiveTab("suggestions");
+    } catch (err) {
+      setOutput(`// Error: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,16 +155,18 @@ export default function Editor() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleRun}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border border-border text-fg hover:bg-canvas transition-colors"
+            disabled={isRunning || isSubmitting}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border border-border text-fg hover:bg-canvas transition-colors disabled:opacity-50"
           >
-            <Play size={14} />
+            {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
             Run
           </button>
           <button
             onClick={handleSubmit}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-accent-emphasis text-white hover:opacity-90 transition-opacity"
+            disabled={isRunning || isSubmitting}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-accent-emphasis text-white hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            <Send size={14} />
+            {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
             Submit
           </button>
         </div>
@@ -103,11 +197,10 @@ export default function Editor() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 text-xs py-2 border-b-2 transition-colors ${
-                  activeTab === tab.id
+                className={`flex-1 text-xs py-2 border-b-2 transition-colors ${activeTab === tab.id
                     ? "border-accent-emphasis text-fg font-medium"
                     : "border-transparent text-fg-muted hover:text-fg"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
