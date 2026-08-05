@@ -47,7 +47,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-canvas rounded-lg shadow-xl w-full max-w-sm p-6 relative border border-border">
+      <div className="bg-canvas rounded-lg shadow-xl w-full max-w-sm mx-4 p-6 relative border border-border">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-fg-muted hover:text-fg"

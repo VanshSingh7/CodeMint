@@ -134,15 +134,15 @@ export default function Editor() {
   return (
     <div className="flex flex-col h-[calc(100vh-62px)]">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-canvas-subtle">
-        <div className="flex items-center gap-3">
-          <span className="text-xs px-2 py-0.5 rounded-md border border-border bg-canvas text-fg-muted">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-border bg-canvas-subtle gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-md border border-border bg-canvas text-fg-muted whitespace-nowrap">
             Editor
           </span>
           <select
             value={languageId}
             onChange={handleLanguageChange}
-            className="text-sm bg-canvas border border-border rounded-md px-2 py-1 text-fg focus:outline-none focus:ring-1 focus:ring-accent-fg"
+            className="text-sm bg-canvas border border-border rounded-md px-2 py-1 text-fg focus:outline-none focus:ring-1 focus:ring-accent-fg min-w-0"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang.id} value={lang.id}>
@@ -152,29 +152,30 @@ export default function Editor() {
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <button
             onClick={handleRun}
             disabled={isRunning || isSubmitting}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border border-border text-fg hover:bg-canvas transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 sm:gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-md border border-border text-fg hover:bg-canvas transition-colors disabled:opacity-50"
           >
             {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-            Run
+            <span className="hidden xs:inline">Run</span>
           </button>
           <button
             onClick={handleSubmit}
             disabled={isRunning || isSubmitting}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-accent-emphasis text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="flex items-center gap-1 sm:gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-md bg-accent-emphasis text-white hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            Submit
+            <span className="hidden xs:inline">Submit</span>
           </button>
         </div>
       </div>
 
-      {/* Editor + output split */}
-      <div className="flex flex-1 min-h-0">
-        <div className="flex-1 min-w-0">
+      {/* Editor + output split — vertical on mobile, horizontal on md+ */}
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
+        {/* Code editor */}
+        <div className="flex-1 min-w-0 min-h-[200px] md:min-h-0">
           <MonacoEditor
             height="100%"
             language={getLanguage(languageId).monaco}
@@ -191,16 +192,18 @@ export default function Editor() {
           />
         </div>
 
-        <div className="w-[380px] border-l border-border flex flex-col min-h-0">
+        {/* Output panel — full width below on mobile, side panel on md+ */}
+        <div className="h-[40vh] md:h-auto md:w-[380px] border-t md:border-t-0 md:border-l border-border flex flex-col min-h-0">
           <div className="flex border-b border-border">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 text-xs py-2 border-b-2 transition-colors ${activeTab === tab.id
+                className={`flex-1 text-xs py-2 border-b-2 transition-colors ${
+                  activeTab === tab.id
                     ? "border-accent-emphasis text-fg font-medium"
                     : "border-transparent text-fg-muted hover:text-fg"
-                  }`}
+                }`}
               >
                 {tab.label}
               </button>

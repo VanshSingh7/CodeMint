@@ -1,6 +1,6 @@
 export default function Login() {
   return (
-    <div className="px-8 py-16 max-w-sm mx-auto">
+    <div className="px-5 sm:px-8 py-10 sm:py-16 max-w-sm mx-auto">
       <h1 className="text-xl font-semibold text-fg mb-1">Sign in</h1>
       <p className="text-sm text-fg-muted mb-6">
         Sign in to save snippets and track your readability score.
