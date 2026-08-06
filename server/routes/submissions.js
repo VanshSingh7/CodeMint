@@ -1,15 +1,17 @@
 const express = require("express");
 const Submission = require("../models/Submission");
 const { protect } = require("../middleware/auth");
+const { analyzeCode } = require("../services/analysis");
+const { generateReadabilityFeedback } = require("../services/aiFeedback");
 
 const router = express.Router();
 
 /**
  * @route   POST /api/submissions
  * @desc    Create a submission record (kind: "run" or "submit")
- * @note    This just PERSISTS the result — actual code execution via Piston
- *          and suggestion generation via Claude happen in a separate route
- *          (tomorrow's Piston work) and get passed in here as the payload.
+ * @note    Execution (Piston) happens client-side call to /api/execute first;
+ *          this route persists the result. For kind "submit", it additionally
+ *          runs static analysis + Gemini readability feedback server-side.
  */
 router.post("/", protect, async (req, res) => {
   try {
@@ -20,12 +22,31 @@ router.post("/", protect, async (req, res) => {
       kind,
       execution,
       testResults,
-      suggestions,
-      readabilityScore,
     } = req.body;
 
     if (!language || code === undefined || !kind) {
       return res.status(400).json({ message: "language, code, and kind are required" });
+    }
+
+    let suggestions = [];
+    let readabilityScore = null;
+
+    if (kind === "submit") {
+      try {
+        const findings = await analyzeCode(language, code);
+        const feedback = await generateReadabilityFeedback(language, code, findings);
+
+        suggestions = feedback.suggestions.map((s) => ({
+          type: s.type || "general",
+          line: s.line ?? null,
+          message: s.message,
+        }));
+        readabilityScore = feedback.readabilityScore;
+      } catch (err) {
+        // Don't fail the whole submission if analysis/AI feedback breaks —
+        // the run/submit result itself is still worth saving.
+        console.error("Readability feedback error:", err.message);
+      }
     }
 
     const submission = await Submission.create({

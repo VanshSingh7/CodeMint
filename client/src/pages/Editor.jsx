@@ -24,6 +24,8 @@ export default function Editor() {
   );
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [readabilityScore, setReadabilityScore] = useState(null);
 
   const handleLanguageChange = (e) => {
     const next = e.target.value;
@@ -103,9 +105,8 @@ export default function Editor() {
       parts.push(`\n// exit code: ${result.exitCode}`);
       setOutput(parts.join("\n"));
 
-      // Persist as a submission (test cases + suggestions come later —
-      // for now this just records the run with kind: "submit")
-      await fetch(`${API_BASE}/submissions`, {
+      // Persist as a submission — server runs static analysis + Gemini feedback
+      const subRes = await fetch(`${API_BASE}/submissions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,6 +123,12 @@ export default function Editor() {
           },
         }),
       });
+
+      const subData = await subRes.json();
+      if (subRes.ok && subData.submission) {
+        setSuggestions(subData.submission.suggestions || []);
+        setReadabilityScore(subData.submission.readabilityScore ?? null);
+      }
 
       setActiveTab("suggestions");
     } catch (err) {
@@ -225,10 +232,47 @@ export default function Editor() {
             )}
 
             {activeTab === "suggestions" && (
-              <p className="text-xs text-fg-muted">
-                Clean-code suggestions (naming, comments, structure) from
-                ESLint/Pylint + LLM analysis will show here after Submit.
-              </p>
+              <div className="space-y-3">
+                {readabilityScore !== null && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-fg">Readability Score:</span>
+                    <span
+                      className={`text-sm font-bold ${
+                        readabilityScore >= 80
+                          ? "text-green-500"
+                          : readabilityScore >= 50
+                          ? "text-yellow-500"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {readabilityScore}/100
+                    </span>
+                  </div>
+                )}
+                {suggestions.length > 0 ? (
+                  <ul className="space-y-2">
+                    {suggestions.map((s, i) => (
+                      <li
+                        key={i}
+                        className="text-xs border border-border rounded-md p-2 bg-canvas-subtle"
+                      >
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase mr-1.5 bg-accent-subtle text-accent-fg">
+                          {s.type}
+                        </span>
+                        {s.line && (
+                          <span className="text-fg-muted mr-1">Line {s.line}:</span>
+                        )}
+                        <span className="text-fg">{s.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-fg-muted">
+                    Clean-code suggestions (naming, comments, structure) from
+                    ESLint/Pylint + LLM analysis will show here after Submit.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
