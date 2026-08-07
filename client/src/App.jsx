@@ -5,6 +5,8 @@ import Sidebar from "./components/Sidebar";
 import Home from "./pages/Home";
 import Editor from "./pages/Editor";
 import Dashboard from "./pages/Dashboard";
+import Snippets from "./pages/Snippets";
+import Submissions from "./pages/Submissions";
 import Login from "./pages/Login";
 import { useState } from "react";
 import { PanelLeft } from "lucide-react";
@@ -45,6 +47,14 @@ export default function App() {
             <Route
               path="/dashboard"
               element={<WorkspaceLayout><Dashboard /></WorkspaceLayout>}
+            />
+            <Route
+              path="/snippets"
+              element={<WorkspaceLayout><Snippets /></WorkspaceLayout>}
+            />
+            <Route
+              path="/submissions"
+              element={<WorkspaceLayout><Submissions /></WorkspaceLayout>}
             />
           </Routes>
         </div>

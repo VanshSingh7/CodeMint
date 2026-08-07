@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import MonacoEditor from "@monaco-editor/react";
-import { Play, Send, Loader2 } from "lucide-react";
+import { Play, Send, Loader2, Save, Check } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { LANGUAGES, getLanguage } from "../data/languages";
@@ -16,6 +17,9 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 export default function Editor() {
   const { theme } = useTheme();
   const { token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const snippetIdParam = searchParams.get("snippet");
+
   const [languageId, setLanguageId] = useState("java");
   const [code, setCode] = useState(getLanguage("java").starter);
   const [activeTab, setActiveTab] = useState("output");
@@ -24,13 +28,91 @@ export default function Editor() {
   );
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [readabilityScore, setReadabilityScore] = useState(null);
+
+  // currently-loaded snippet, if any — Save updates it, Submit links to it
+  const [snippetId, setSnippetId] = useState(null);
+  const [snippetTitle, setSnippetTitle] = useState("");
+
+  // Load a snippet if ?snippet=<id> is present
+  useEffect(() => {
+    if (!snippetIdParam || !token) return;
+
+    const loadSnippet = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/snippets/${snippetIdParam}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Snippet not found");
+        const data = await res.json();
+
+        setSnippetId(data.snippet._id);
+        setSnippetTitle(data.snippet.title);
+        setLanguageId(data.snippet.language);
+        setCode(data.snippet.code);
+      } catch (err) {
+        console.error("Load snippet error:", err.message);
+      }
+    };
+
+    loadSnippet();
+  }, [snippetIdParam, token]);
 
   const handleLanguageChange = (e) => {
     const next = e.target.value;
     setLanguageId(next);
     setCode(getLanguage(next).starter);
+    // switching language starts a fresh, unsaved snippet
+    setSnippetId(null);
+    setSnippetTitle("");
+  };
+
+  const handleSave = async () => {
+    if (!token) return;
+
+    setIsSaving(true);
+    try {
+      if (snippetId) {
+        // update existing snippet
+        const res = await fetch(`${API_BASE}/snippets/${snippetId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ code }),
+        });
+        if (!res.ok) throw new Error("Save failed");
+      } else {
+        // create a new snippet
+        const title =
+          window.prompt("Name this snippet:", `${getLanguage(languageId).label} snippet`) ||
+          `${getLanguage(languageId).label} snippet`;
+
+        const res = await fetch(`${API_BASE}/snippets`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title, language: languageId, code }),
+        });
+        if (!res.ok) throw new Error("Save failed");
+        const data = await res.json();
+        setSnippetId(data.snippet._id);
+        setSnippetTitle(data.snippet.title);
+      }
+
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 1500);
+    } catch (err) {
+      console.error("Save snippet error:", err.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const runOnPiston = async () => {
@@ -113,6 +195,7 @@ export default function Editor() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          snippet: snippetId || null,
           language: languageId,
           code,
           kind: "submit",
@@ -157,9 +240,30 @@ export default function Editor() {
               </option>
             ))}
           </select>
+          {snippetTitle && (
+            <span className="hidden md:inline text-xs text-fg-muted truncate">
+              {snippetTitle}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <button
+            onClick={handleSave}
+            disabled={isSaving || !token}
+            className="flex items-center gap-1 sm:gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-md border border-border text-fg hover:bg-canvas transition-colors disabled:opacity-50"
+          >
+            {isSaving ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : justSaved ? (
+              <Check size={14} className="text-green-500" />
+            ) : (
+              <Save size={14} />
+            )}
+            <span className="hidden xs:inline">
+              {snippetId ? "Save" : "Save as"}
+            </span>
+          </button>
           <button
             onClick={handleRun}
             disabled={isRunning || isSubmitting}
