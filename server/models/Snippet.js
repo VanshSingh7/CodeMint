@@ -25,6 +25,17 @@ const snippetSchema = new mongoose.Schema(
       default: "",
     },
     tags: [{ type: String, trim: true }],
+    testCases: [
+      {
+        input: { type: String, default: "" },
+        expectedOutput: { type: String, required: true },
+        isHidden: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    // null = hidden cases never generated yet; set whenever they're
+    // (re)generated so the UI can show "Generated 3 days ago · Regenerate"
+    hiddenTestCasesGeneratedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

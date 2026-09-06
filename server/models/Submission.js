@@ -6,6 +6,9 @@ const testCaseResultSchema = new mongoose.Schema(
     expectedOutput: String,
     actualOutput: String,
     passed: Boolean,
+    isHidden: { type: Boolean, default: false },
+    error: { type: String, default: null },
+    executionTimeMs: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -57,6 +60,12 @@ const submissionSchema = new mongoose.Schema(
       exitCode: { type: Number, default: null },
     },
     testResults: [testCaseResultSchema],
+    testsSummary: {
+      totalCases: { type: Number, default: 0 },
+      passedCases: { type: Number, default: 0 },
+      hiddenTotal: { type: Number, default: 0 },
+      hiddenPassed: { type: Number, default: 0 },
+    },
     suggestions: [suggestionSchema],
     readabilityScore: {
       type: Number,
