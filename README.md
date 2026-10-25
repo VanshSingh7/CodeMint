@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite"/>
   <img src="https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js"/>
   <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/Judge0-Execution-blue?style=flat-square" alt="Judge0"/>
   <img src="https://img.shields.io/badge/Gemini_AI-Powered-4285F4?style=flat-square&logo=google&logoColor=white" alt="Gemini AI"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License"/>
 </p>
@@ -45,7 +46,7 @@
 |---------|-------------|
 | **🖥️ Monaco Editor** | Full-featured code editor (same engine as VS Code) with syntax highlighting and IntelliSense |
 | **🌐 Multi-Language** | JavaScript, Python, Java, and C++ — each with starter templates |
-| **⚡ Instant Execution** | Run code in the browser via a self-hosted [Piston](https://github.com/engineer-man/piston) engine |
+| **⚡ Instant Execution** | Run code safely in the browser via [Judge0 CE](https://judge0.com/) execution engine |
 | **🧪 Test Cases** | Define custom input/output test cases and see pass/fail results per case |
 | **🤖 AI Feedback** | Gemini-powered readability analysis with a 0–100 score and actionable suggestions |
 | **📊 Static Analysis** | ESLint (JS) and Pylint (Python) findings fed into AI context for richer feedback |
@@ -75,7 +76,7 @@
 |------------|---------|
 | [Node.js](https://nodejs.org/) + [Express 5](https://expressjs.com/) | REST API server |
 | [MongoDB Atlas](https://www.mongodb.com/atlas) + [Mongoose 9](https://mongoosejs.com/) | Database & ODM |
-| [Piston](https://github.com/engineer-man/piston) | Sandboxed code execution (Docker) |
+| [Judge0 CE](https://judge0.com/) | Sandboxed multi-language code execution |
 | [Gemini AI](https://ai.google.dev/) | Readability scoring & suggestions |
 | [ESLint](https://eslint.org/) / [Pylint](https://pylint.org/) | Static code analysis |
 | [JWT](https://jwt.io/) + [Google OAuth](https://developers.google.com/identity) | Authentication |
@@ -103,7 +104,7 @@ CodeMint/
 │   ├── middleware/              # Auth middleware
 │   ├── models/                 # User, Snippet, Submission (Mongoose)
 │   ├── routes/                 # auth, execute, snippets, submissions
-│   ├── services/               # AI feedback (Gemini)
+│   ├── services/               # judge0 (execution), AI feedback (Gemini), analysis
 │   ├── utils/                  # Helper utilities
 │   ├── index.js                # Server entry point
 │   └── package.json
@@ -121,10 +122,11 @@ CodeMint/
 
 - **Node.js** ≥ 18
 - **npm** ≥ 9
-- **MongoDB Atlas** account (or a local MongoDB instance)
-- **Docker** (for Piston code execution engine)
+- **MongoDB Atlas** account (or local MongoDB instance)
 - **Google Cloud** project with OAuth 2.0 credentials
 - **Gemini API** key from [Google AI Studio](https://aistudio.google.com/)
+
+*(No local Docker required — code execution is powered by Judge0 CE).*
 
 ### 1. Clone the repository
 
@@ -139,16 +141,16 @@ cd CodeMint
 ```env
 PORT=5000
 CLIENT_URL=http://localhost:5173
-MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/codemint
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/codemint
 JWT_SECRET=your_jwt_secret
 GOOGLE_CLIENT_ID=your_google_client_id
 GEMINI_API_KEY=your_gemini_api_key
-PISTON_URL=http://localhost:2000
 ```
 
 **Client** (`client/.env`):
 ```env
 VITE_API_URL=http://localhost:5000/api
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
 ### 3. Install dependencies
@@ -163,13 +165,7 @@ cd ../client
 npm install
 ```
 
-### 4. Start the Piston engine
-
-```bash
-docker run -d --name piston -p 2000:2000 ghcr.io/engineer-man/piston
-```
-
-### 5. Run the development servers
+### 4. Run the development servers
 
 ```bash
 # Terminal 1 — Backend
@@ -192,7 +188,7 @@ The app will be available at **http://localhost:5173**
 | `POST` | `/api/auth/register` | Register a new user | ❌ |
 | `POST` | `/api/auth/login` | Login with email/password | ❌ |
 | `POST` | `/api/auth/google` | Login with Google OAuth | ❌ |
-| `POST` | `/api/execute` | Execute code via Piston | ✅ |
+| `POST` | `/api/execute` | Execute code via Judge0 CE | ✅ |
 | `GET` | `/api/snippets/mine` | Get user's saved snippets | ✅ |
 | `GET` | `/api/snippets/:id` | Get a single snippet | ✅ |
 | `POST` | `/api/snippets` | Create a new snippet | ✅ |
@@ -239,8 +235,7 @@ The app will be available at **http://localhost:5173**
         │                          │ │
         ▼                          ▼ ▼
 ┌──────────────┐          ┌──────────────────┐
-│    Piston    │          │  MongoDB Atlas   │
-│   (Docker)   │          │                  │
+│  Judge0 CE   │          │  MongoDB Atlas   │
 │  Sandboxed   │          │  Users           │
 │  Execution   │          │  Snippets        │
 │              │          │  Submissions     │
@@ -251,12 +246,12 @@ The app will be available at **http://localhost:5173**
 
 ## 🧑‍💻 Supported Languages
 
-| Language | Version | Static Analysis |
-|----------|---------|-----------------|
-| Java | 15.0.2 | — |
-| JavaScript | 18.15.0 | ESLint |
-| Python | 3.10.0 | Pylint |
-| C++ | 10.2.0 | — |
+| Language | Engine | Static Analysis |
+|----------|--------|-----------------|
+| JavaScript (Node.js) | Judge0 CE | ESLint |
+| Python (3.8+) | Judge0 CE | Pylint |
+| C++ (GCC) | Judge0 CE | — |
+| Java (OpenJDK) | Judge0 CE | — |
 
 ---
 
